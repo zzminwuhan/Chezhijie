@@ -8,6 +8,18 @@
 
 #import "AppDelegate.h"
 
+#import "GeTuiManager.h"
+
+#import "TabBarViewController.h"
+
+#import "LogViewController.h"
+
+#import "GeTuiManager.h"
+
+#import "SKShare.h"
+
+#import "BootPageViewController.h"
+
 @interface AppDelegate ()
 
 @end
@@ -17,8 +29,100 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     // Override point for customization after application launch.
+    
+    
+    self.window = [[UIWindow alloc]initWithFrame:[UIScreen mainScreen].bounds];
+    self.window.backgroundColor = [UIColor whiteColor];
+    [self.window makeKeyAndVisible];
+    
+    
+    [[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleLightContent];
+    
+    
+    [SKShare initSDK];
+    
+    [GeTuiManager shareInstance];
+    if(launchOptions != nil){
+        
+        [[GeTuiManager shareInstance] didFinishLaunchingWithOptions:launchOptions];
+    }
+    
+    //iOS显示启动页时隐藏状态栏
+    [[UIApplication sharedApplication] setStatusBarHidden:NO];
+    
+    [NetWorkManager netWorkMonitoring];
+    
+    
+    
+    if([UserManager isLogin]){
+     
+        [self initTabVC];
+    }
+    else {
+        
+        if([[NSUserDefaults standardUserDefaults] boolForKey:@"firststart"] == NO){
+            [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"firststart"];
+            
+            BootPageViewController * bootVC = [[BootPageViewController alloc]init];
+            bootVC.goBlock = ^{
+                [self initLogVC];
+            };
+            self.window.rootViewController = bootVC;
+            
+        }
+        else {
+            
+            [self initLogVC];
+        }
+    }
+    
+    [self regNotifiation];
+    
+    if (@available(iOS 11.0, *)) {
+        [[UIScrollView appearance] setContentInsetAdjustmentBehavior:UIScrollViewContentInsetAdjustmentNever];
+    } else {
+        // Fallback on earlier versions
+        
+    }
+    
+    
+    application.applicationIconBadgeNumber = 0;
+    
+    
     return YES;
 }
+
+
+
+- (void)regNotifiation {
+    
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(initLogVC) name:@"quitnotification" object:nil];
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(initTabVC) name:@"lognotification" object:nil];
+    
+}
+
+
+
+- (void)initLogVC {
+    
+    LogViewController *rootVC = [[LogViewController alloc]init];
+    
+    UINavigationController *navi = [[UINavigationController alloc]initWithRootViewController:rootVC];
+    
+    self.window.rootViewController = navi;
+}
+
+
+- (void)initTabVC {
+    
+    TabBarViewController *rootVC = [[TabBarViewController alloc]init];
+    
+    self.window.rootViewController = rootVC;
+}
+
+
 
 
 - (void)applicationWillResignActive:(UIApplication *)application {
@@ -46,6 +150,71 @@
 - (void)applicationWillTerminate:(UIApplication *)application {
     // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
 }
+
+
+
+
+
+#pragma mark - 开始竖屏
+//开启竖屏
+- (UIInterfaceOrientationMask)application:(UIApplication *)application supportedInterfaceOrientationsForWindow:(UIWindow *)window
+{
+    return (UIInterfaceOrientationMaskPortrait);
+}
+
+
+
+#pragma mark - app 回调
+// 其他应用 回调
+
+- (BOOL)application:(UIApplication *)application handleOpenURL:(NSURL *)url {
+    
+    [SKShare handleOpenURL:url];
+    
+    return YES;
+}
+
+
+// 打开其他应用 或者链接 9.0 以后
+
+- (BOOL)application:(UIApplication *)app openURL:(NSURL *)url options:(NSDictionary<NSString *,id> *)options {
+    
+    [SKShare handleOpenURL:url];
+    return YES;
+}
+
+// 4.2 - 9.0
+- (BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString *)sourceApplication annotation:(id)annotation {
+    
+    [SKShare handleOpenURL:url];
+    return YES;
+}
+
+
+
+// 推送部分
+
+
+- (void)application:(UIApplication *)application didFailToRegisterForRemoteNotificationsWithError:(NSError *)error  {
+    
+    NSLog(@"didFailToRegistererror %@",error);
+}
+
+
+- (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
+    
+    [[GeTuiManager shareInstance] registerForRemoteNotificationsWithDeviceToken:deviceToken];
+}
+
+
+- (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo {
+    
+    NSLog(@"didReceiveRemoteNotification %@",userInfo);
+    
+    [[GeTuiManager shareInstance] didReceiveRemoteNotification:userInfo];
+    
+}
+
 
 
 @end
